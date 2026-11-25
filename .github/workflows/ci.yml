@@ -8,8 +8,12 @@ on:
 
 jobs:
   lint-and-test-sqlite:
-    name: Lint, Format, Migration & Tests (SQLite)
+    name: Lint, Format, Migration & Tests (SQLite, Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.14"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -19,25 +23,25 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Set up Python 3.14
-        run: uv python install 3.14
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --locked
+        run: uv sync --locked --python ${{ matrix.python-version }}
 
       - name: Run Ruff lint
-        run: uv run ruff check .
+        run: uv run --python ${{ matrix.python-version }} ruff check .
 
       - name: Run Ruff format check
-        run: uv run ruff format --check .
+        run: uv run --python ${{ matrix.python-version }} ruff format --check .
 
       - name: Verify Alembic migration (SQLite)
         env:
           DATABASE_URL: sqlite+aiosqlite:///./data/ci_alembic.db
-        run: uv run alembic upgrade head
+        run: uv run --python ${{ matrix.python-version }} alembic upgrade head
 
       - name: Run pytest with coverage
-        run: uv run pytest -v --cov=llm_api_service --cov-report=term-missing --cov-fail-under=85
+        run: uv run --python ${{ matrix.python-version }} pytest -v --cov=llm_api_service --cov-report=term-missing --cov-fail-under=85
 
   test-postgres:
     name: Migration & Integration Tests (PostgreSQL 17)

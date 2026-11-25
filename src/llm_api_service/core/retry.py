@@ -42,7 +42,7 @@ def parse_retry_after(header_value: str | None) -> float | None:
             target_dt = target_dt.replace(tzinfo=UTC)
         delta = (target_dt - datetime.now(UTC)).total_seconds()
         return max(0.0, delta)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return None
 
 
