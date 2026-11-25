@@ -1,0 +1,36 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv/
+
+# Local docs & planning
+docs/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Local SQLite database & data artifacts
+data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite3
+
+# Tooling & test caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Frontend build artifacts
+frontend/node_modules/
+frontend/dist/

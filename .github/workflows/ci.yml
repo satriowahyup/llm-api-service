@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint-and-test-sqlite:
+    name: Lint, Format, Migration & Tests (SQLite)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.14
+        run: uv python install 3.14
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run Ruff lint
+        run: uv run ruff check .
+
+      - name: Run Ruff format check
+        run: uv run ruff format --check .
+
+      - name: Verify Alembic migration (SQLite)
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./data/ci_alembic.db
+        run: uv run alembic upgrade head
+
+      - name: Run pytest with coverage
+        run: uv run pytest -v --cov=llm_api_service --cov-report=term-missing --cov-fail-under=85
+
+  test-postgres:
+    name: Migration & Integration Tests (PostgreSQL 17)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: llm_api_service_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d llm_api_service_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.14
+        run: uv python install 3.14
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run Alembic migrations on PostgreSQL
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/llm_api_service_test
+        run: uv run alembic upgrade head
+
+      - name: Run integration tests against PostgreSQL
+        env:
+          TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/llm_api_service_test
+        run: uv run pytest -v tests/integration
