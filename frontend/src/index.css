@@ -1,0 +1,213 @@
+@import "tailwindcss";
+
+:root {
+  --bg-canvas: #f6f3ec;
+  --bg-rail: #ede8dd;
+  --bg-surface: #fffdf9;
+  --bg-subtle: #e9e2d4;
+  --border-subtle: #dcd3c2;
+  --border-strong: #bfb39d;
+  --ink-primary: #1b2129;
+  --ink-secondary: #46505d;
+  --ink-muted: #576270;
+  --accent: #b45309;
+  --accent-hover: #92400e;
+  --accent-soft: #f5e6d2;
+  --accent-ink: #fffdf9;
+  --bar-decode: #46505d;
+  --danger: #b91c1c;
+  --danger-soft: #fde8e8;
+  --success: #15803d;
+  --shadow-composer: 0 2px 12px rgba(27, 33, 41, 0.06);
+  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+[data-theme="dark"] {
+  --bg-canvas: #12151a;
+  --bg-rail: #181c23;
+  --bg-surface: #1e242d;
+  --bg-subtle: #262e3a;
+  --border-subtle: #2f3847;
+  --border-strong: #475368;
+  --ink-primary: #f1ece3;
+  --ink-secondary: #bcc5d2;
+  --ink-muted: #9aa5b5;
+  --accent: #d97706;
+  --accent-hover: #f59e0b;
+  --accent-soft: #312414;
+  --accent-ink: #12151a;
+  --bar-decode: #8a97aa;
+  --danger: #f87171;
+  --danger-soft: #381e23;
+  --success: #4ade80;
+  --shadow-composer: 0 2px 14px rgba(0, 0, 0, 0.28);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+    background-color: var(--bg-canvas);
+    color: var(--ink-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a[href],
+  button,
+  summary,
+  select,
+  label[for] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  select:disabled,
+  input:disabled,
+  textarea:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono-tech {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.composer-shell {
+  box-shadow: var(--shadow-composer);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.composer-shell:focus-within {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+/* Markdown prose inside assistant messages */
+.chat-prose p {
+  margin: 0.5rem 0;
+  line-height: 1.65;
+}
+
+.chat-prose p:first-child {
+  margin-top: 0;
+}
+
+.chat-prose p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-prose h1,
+.chat-prose h2,
+.chat-prose h3 {
+  font-weight: 600;
+  margin-top: 0.9rem;
+  margin-bottom: 0.35rem;
+  line-height: 1.35;
+}
+
+.chat-prose ul,
+.chat-prose ol {
+  margin: 0.5rem 0;
+  padding-left: 1.35rem;
+}
+
+.chat-prose ul {
+  list-style-type: disc;
+}
+
+.chat-prose ol {
+  list-style-type: decimal;
+}
+
+.chat-prose li {
+  margin: 0.22rem 0;
+  line-height: 1.6;
+}
+
+.chat-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background-color: var(--bg-subtle);
+  padding: 0.12rem 0.34rem;
+  border-radius: 4px;
+}
+
+.chat-prose pre {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  background-color: transparent;
+  overflow-x: auto;
+}
+
+.chat-prose pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 0.83rem;
+  line-height: 1.55;
+}
+
+.chat-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.7rem 0;
+  font-size: 0.88rem;
+}
+
+.chat-prose th,
+.chat-prose td {
+  border: 1px solid var(--border-subtle);
+  padding: 0.42rem 0.65rem;
+  text-align: left;
+}
+
+.chat-prose th {
+  background-color: var(--bg-subtle);
+  font-weight: 600;
+}
+
+@keyframes caret-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.stream-caret {
+  display: inline-block;
+  width: 0.42rem;
+  height: 1rem;
+  margin-left: 0.15rem;
+  vertical-align: -0.15rem;
+  background-color: var(--accent);
+  animation: caret-blink 1s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stream-caret {
+    animation: none;
+  }
+  * {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+  }
+}

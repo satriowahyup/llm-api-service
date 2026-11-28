@@ -101,11 +101,22 @@ class GeminiProvider:
         config: ProviderConfig,
         *,
         retry_config: RetryConfig,
+        timeout_seconds: float = 60.0,
         client: Any | None = None,
     ) -> None:
         self._config = config
         self._retry_config = retry_config
-        self._client = client if client is not None else genai.Client(api_key=config.api_key)
+        self._timeout_seconds = timeout_seconds
+        # Disable SDK-internal retries so retry_async is the single retry orchestrator
+        # (prevents nested retry amplification on 429/503 responses).
+        self._client = (
+            client
+            if client is not None
+            else genai.Client(
+                api_key=config.api_key,
+                http_options={"retry_options": {"attempts": 1}},
+            )
+        )
 
     def _build_kwargs(self, request: LLMRequest, *, stream: bool) -> dict[str, Any]:
         system_parts: list[str] = []
@@ -136,6 +147,7 @@ class GeminiProvider:
             "input": steps,
             "store": False,
             "stream": stream,
+            "timeout": self._timeout_seconds,
         }
         if system_parts:
             kwargs["system_instruction"] = "\n\n".join(system_parts)

@@ -4,9 +4,10 @@
 ![Python](https://img.shields.io/badge/python-%3E%3D3.12%20(3.12%20%7C%203.14%20tested)-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688)
 ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy%202.0-SQLite%20%7C%20PostgreSQL%2017-336791)
+![React](https://img.shields.io/badge/Frontend-React%2019%20%2B%20Vite%20%2B%20TS-61dafb)
 ![Ruff](https://img.shields.io/badge/lint-Ruff-261230)
 
-Asynchronous multi-provider LLM REST and Server-Sent Events (SSE) API service built with **FastAPI**, **SQLAlchemy 2.0 Async**, **Alembic**, and **uv**.
+Asynchronous multi-provider LLM REST and Server-Sent Events (SSE) API service built with **FastAPI**, **SQLAlchemy 2.0 Async**, **Alembic**, and **uv**, paired with a 3-pane **React + TypeScript + Vite** observability workbench served via **Nginx**.
 
 ---
 
@@ -27,12 +28,20 @@ Asynchronous multi-provider LLM REST and Server-Sent Events (SSE) API service bu
   - Async **exponential backoff with jitter** and `Retry-After` handling for transient failures (`429`, `500`, `502`, `503`, `504`, `529`, network timeouts), with fail-fast on `400`/`401`/`403`/`422`.
   - Structured JSON logs with `X-Request-ID` correlation and automatic secret redaction.
 
+- **3-Pane Enterprise Frontend Workbench (`frontend/`)**:
+  - **Session Rail**: Compact multi-session history, live title/provider filter, inline delete confirmation, and cumulative workspace token & USD spend summary.
+  - **Focused Conversation Stage**: Unified docked composer, Markdown + copyable code blocks, mid-session **Provider Handoff** dividers, per-turn **TTFT vs Decode** visual split bars, and JSON/Markdown session export.
+  - **Live Inspector & Config Rail**: Real-time SSE stream trace (`X-Request-ID`, delta frames, TTFT/total latency), session telemetry KPIs, dynamic **Copy as `cURL` / `Python (httpx)`** snippets, and Light/Dark theme toggle.
+
 ---
 
 ## Architecture Overview
 
 ```text
-Client (curl / SPA / SDK)
+Browser (React 19 + TypeScript + Vite + Tailwind CSS)
+   │
+   ▼
+Nginx Reverse Proxy (static SPA + /v1/* with proxy_buffering off for SSE)
    │
    ▼
 FastAPI + Uvicorn (X-Request-ID, X-Latency-Ms, Global Error Envelope)
@@ -67,14 +76,16 @@ ChatService (3-tier provider resolution, short-lived DB transactions, metrics, c
 
 - **Python**: `>= 3.12` (CI verified on Python `3.12` and `3.14`)
 - **Package Manager**: [`uv`](https://docs.astral.sh/uv/)
-- **Optional**: Docker & Docker Compose (for PostgreSQL 17 production stack) and/or [Ollama](https://ollama.com/) (for local inference)
+- **Frontend (Optional for local UI dev)**: Node.js `>= 22` and `npm`
+- **Optional**: Docker & Docker Compose (for full Nginx + FastAPI + PostgreSQL 17 stack) and/or [Ollama](https://ollama.com/) (for local inference)
 
 ---
 
 ## Quickstart
 
-### 1. Local Development (SQLite, Zero DB Setup)
+### 1. Local Development (SQLite + Optional Frontend Dev Server)
 
+**Backend API:**
 ```bash
 cp .env.example .env
 # Add at least GEMINI_API_KEY (or another provider key / local Ollama)
@@ -84,9 +95,17 @@ uv run alembic upgrade head
 uv run uvicorn llm_api_service.main:app --reload
 ```
 
-Interactive OpenAPI docs are available at `http://localhost:8000/docs`.
+**Frontend Workbench (in a second terminal):**
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-### 2. Production Stack (Docker Compose + PostgreSQL 17)
+- Frontend Workbench: `http://localhost:5173` (Vite proxies `/v1` and `/health` to `http://127.0.0.1:8000`)
+- Interactive OpenAPI docs: `http://localhost:8000/docs`
+
+### 2. Production Stack (Docker Compose: Nginx + FastAPI + PostgreSQL 17)
 
 ```bash
 cp .env.example .env
@@ -95,7 +114,10 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The API container automatically runs `alembic upgrade head` against PostgreSQL 17 before starting Uvicorn on port `8000`.
+- Frontend Workbench (Nginx + SSE proxy): `http://localhost:3000`
+- Backend API directly: `http://localhost:8000/health`
+
+The API container automatically runs `alembic upgrade head` against PostgreSQL 17 before starting Uvicorn.
 
 ---
 
@@ -215,6 +237,11 @@ All domain, validation, and upstream provider errors return a consistent JSON en
 llm-api-service/
 ├── .github/workflows/ci.yml        # Python 3.12 & 3.14 SQLite matrix + PostgreSQL 17 CI job
 ├── alembic/                        # Async Alembic migrations (0001_initial_schema)
+├── frontend/                       # React 19 + TypeScript + Vite + Tailwind + Nginx
+│   ├── src/components/             # SessionSidebar, MessageList, InspectorPanel, CodeBlock
+│   ├── src/lib/                    # Typed REST/SSE client, formatters, cURL/Python snippets
+│   ├── nginx.conf                  # Static SPA + SSE reverse proxy (proxy_buffering off)
+│   └── Dockerfile                  # Multi-stage Node 22 build -> Nginx 1.27 runtime
 ├── src/llm_api_service/
 │   ├── api/                        # FastAPI routes, DI helpers, global error handlers
 │   ├── core/                       # Exceptions, retry/backoff, metrics, pricing, JSON logging
@@ -247,11 +274,14 @@ uv run ruff format --check .
 # Run integration tests against PostgreSQL
 TEST_DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/llm_api_service_test" \
   uv run pytest -v tests/integration
+# Frontend typecheck & production build
+cd frontend && npm ci && npm run typecheck && npm run build
 ```
 
-GitHub Actions CI (`.github/workflows/ci.yml`) runs two automated verification jobs on every push and pull request:
+GitHub Actions CI (`.github/workflows/ci.yml`) runs three automated verification workflows on every push and pull request:
 1. **SQLite Matrix (`Python 3.12` & `Python 3.14`)**: `uv sync --locked`, `ruff check`, `ruff format --check`, `alembic upgrade head`, and `pytest` with `--cov-fail-under=85`.
 2. **PostgreSQL 17 Integration**: spins up a `postgres:17-alpine` service container, runs `alembic upgrade head`, and executes `pytest tests/integration` against live PostgreSQL.
+3. **Frontend Build**: runs `npm ci`, `npm run typecheck`, and `npm run build` on Node 22.
 
 > **Windows Smart App Control note:** If Windows blocks unsigned `.venv` `.exe` shims or compiled SQLAlchemy Cython `.pyd` extensions, set `$env:DISABLE_SQLALCHEMY_CEXT_RUNTIME="1"` and run via your signed system Python: `uv run --python-preference only-system python -m pytest` (and `python -m alembic`, `python -m uvicorn`).
 
@@ -259,5 +289,6 @@ GitHub Actions CI (`.github/workflows/ci.yml`) runs two automated verification j
 
 ## Roadmap
 
-- [x] **Backend Core (Phases 0–5)**: FastAPI async REST & SSE API, 3 LLM wire protocols (Gemini, Anthropic Claude, OpenAI-compatible/Ollama), Dual-Backend SQLite + PostgreSQL 17 + Alembic migrations, TTFT/throughput/USD cost observability, exponential backoff retries, automated mock test suite, CI matrix, and Docker stack.
-- [ ] **Phase 6 (Planned)**: Interactive Frontend Workbench (`React + TypeScript + Vite + Tailwind CSS`) served via Nginx reverse proxy (`proxy_buffering off` for SSE).
+- [x] **Backend Core (Phases 0-5)**: FastAPI async REST & SSE API, 3 LLM wire protocols (Gemini, Anthropic Claude, OpenAI-compatible/Ollama), Dual-Backend SQLite + PostgreSQL 17 + Alembic migrations, TTFT/throughput/USD cost observability, exponential backoff retries, automated mock test suite, CI matrix, and Docker stack.
+- [x] **Frontend Workbench (Phase 6)**: 3-pane React 19 + TypeScript + Vite + Tailwind CSS observability console (live SSE stream trace, mid-session provider handoff, dynamic `cURL`/`Python` snippets, Light/Dark modes, JSON/Markdown export) served via Nginx (`proxy_buffering off`).
+- [ ] **Future v1.1 Enhancements**: Daily usage & cost evaluation report endpoint (`GET /v1/analytics/usage`) and optional service-to-service `X-API-Key` header middleware (`SERVICE_API_KEY`).

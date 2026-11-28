@@ -41,7 +41,11 @@ class ProviderRegistry:
 
         provider: BaseLLMProvider
         if provider_name == "gemini":
-            provider = GeminiProvider(config, retry_config=self._retry_config)
+            provider = GeminiProvider(
+                config,
+                retry_config=self._retry_config,
+                timeout_seconds=self._settings.llm_timeout_seconds,
+            )
         elif provider_name == "anthropic":
             provider = AnthropicProvider(
                 config,
